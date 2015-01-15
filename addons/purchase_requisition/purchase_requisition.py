@@ -25,6 +25,7 @@ import time
 from openerp import netsvc
 
 from openerp.osv import fields,osv
+from openerp import netsvc
 from openerp.tools.translate import _
 import openerp.addons.decimal_precision as dp
 
@@ -34,9 +35,8 @@ class purchase_requisition(osv.osv):
     _inherit = ['mail.thread', 'ir.needaction_mixin']
     _columns = {
         'name': fields.char('Requisition Reference', size=32,required=True),
-        'origin': fields.char('Source Document', size=32),
         'date_start': fields.datetime('Requisition Date'),
-        'date_end': fields.datetime('Requisition Deadline'),
+        'date_end': fields.datetime('Requisition Closed'),
         'user_id': fields.many2one('res.users', 'Responsible'),
         'exclusive': fields.selection([('exclusive','Purchase Requisition (exclusive)'),('multiple','Multiple Requisitions')],'Requisition Type', required=True, help="Purchase Requisition (exclusive):  On the confirmation of a purchase order, it cancels the remaining purchase order.\nPurchase Requisition(Multiple):  It allows to have multiple purchase orders.On confirmation of a purchase order it does not cancel the remaining orders"""),
         'description': fields.text('Description'),
@@ -80,7 +80,13 @@ class purchase_requisition(osv.osv):
         return self.write(cr, uid, ids, {'state':'in_progress'} ,context=context)
 
     def tender_reset(self, cr, uid, ids, context=None):
-        return self.write(cr, uid, ids, {'state': 'draft'})
+        self.write(cr, uid, ids, {'state': 'draft'})
+        wf_service = netsvc.LocalService("workflow")
+        for p_id in ids:
+            # Deleting the existing instance of workflow for PO
+            wf_service.trg_delete(uid, 'purchase.requisition', p_id, cr)
+            wf_service.trg_create(uid, 'purchase.requisition', p_id, cr)
+        return True
 
     def tender_done(self, cr, uid, ids, context=None):
         procurement_ids = self.pool['procurement.order'].search(cr, uid, [('requisition_id', 'in', ids)], context=context)
@@ -163,6 +169,7 @@ class purchase_requisition(osv.osv):
                     'price_unit': seller_price,
                     'date_planned': date_planned,
                     'taxes_id': [(6, 0, taxes)],
+                    'move_dest_id': line.move_dest_id.id,
                 }, context=context)
                 
         return res
@@ -180,6 +187,13 @@ class purchase_requisition_line(osv.osv):
         'product_qty': fields.float('Quantity', digits_compute=dp.get_precision('Product Unit of Measure')),
         'requisition_id' : fields.many2one('purchase.requisition','Purchase Requisition', ondelete='cascade'),
         'company_id': fields.related('requisition_id','company_id',type='many2one',relation='res.company',string='Company', store=True, readonly=True),
+        'warehouse_id': fields.related(
+            'requisition_id', 'warehouse_id', type='many2one',
+            relation='stock.warehouse', string='Warehouse', readonly=True),
+        'date_planned': fields.datetime('Requisition Deadline'),
+        'origin': fields.char('Source Document', size=32),
+        'move_dest_id': fields.many2one(
+            'stock.move', 'Reservation Destination', ondelete='set null'),
     }
 
     def onchange_product_id(self, cr, uid, ids, product_id, product_uom_id, context=None):
@@ -197,7 +211,21 @@ class purchase_requisition_line(osv.osv):
     _defaults = {
         'company_id': lambda self, cr, uid, c: self.pool.get('res.company')._company_default_get(cr, uid, 'purchase.requisition.line', context=c),
     }
-purchase_requisition_line()
+
+    def create(self, cr, uid, vals, context=None):
+        """
+        Creating lines from the merge wizard can lead to disastrous results
+        but unfortunately, m2m widget does not honour 'create="False"'.
+        Note that https://bugs.launchpad.net/openerp-web/+bug/1179839 does not
+        even apply here, because of the confusing semantics between 'creating
+        a record of the target model' and 'adding items' in m2m vs. o2m.
+        """
+        if context and context.get('reqline_no_create'):
+            raise osv.except_osv(
+                _('Error'),
+                _('You should not create a new line from this view'))
+        return super(purchase_requisition_line, self).create(
+            cr, uid, vals, context=context)
 
 class purchase_order(osv.osv):
     _inherit = "purchase.order"
@@ -241,7 +269,12 @@ product_product()
 class procurement_order(osv.osv):
     _inherit = 'procurement.order'
     _columns = {
-        'requisition_id': fields.many2one('purchase.requisition', 'Latest Requisition')
+        'requisition_line_id': fields.many2one(
+            'purchase.requisition.line', 'Associated Requisition Line'),
+        'requisition_id': fields.related(
+            'requisition_line_id', 'requisition_id',
+            type='many2one', relation='purchase.requisition',
+            string='Latest Requisition', readonly=True),
     }
 
     def _get_warehouse(self, procurement, user_company):
@@ -276,26 +309,30 @@ class procurement_order(osv.osv):
     def make_po(self, cr, uid, ids, context=None):
         res = {}
         requisition_obj = self.pool.get('purchase.requisition')
+        requisition_line_obj = self.pool.get('purchase.requisition.line')
         non_requisition = []
         for procurement in self.browse(cr, uid, ids, context=context):
             if procurement.product_id.purchase_requisition:
                 user_company = self.pool['res.users'].browse(cr, uid, uid, context=context).company_id
                 req = requisition_obj.create(cr, uid, {
-                    'origin': procurement.origin,
                     'date_end': procurement.date_planned,
                     'warehouse_id': self._get_warehouse(procurement, user_company),
                     'company_id': procurement.company_id.id,
-                    'line_ids': [(0, 0, {
-                        'product_id': procurement.product_id.id,
-                        'product_uom_id': procurement.product_uom.id,
-                        'product_qty': procurement.product_qty
-
-                    })],
-                })
+                    }, context=context)
+                requisition_line_id = requisition_line_obj.create(cr, uid,
+                   {
+                    'requisition_id': res[procurement.id],
+                    'date_planned': procurement.date_planned,
+                    'origin': procurement.origin,
+                    'move_dest_id': procurement.move_id.id,
+                    'product_id': procurement.product_id.id,
+                    'product_uom_id': procurement.product_uom.id,
+                    'product_qty': procurement.product_qty,
+                    }, context=context)
                 procurement.write({
                     'state': 'running',
-                    'requisition_id': req
-                })
+                    'requisition_line_id': requisition_line_id,
+                    }, context=context)
                 res[procurement.id] = 0
             else:
                 non_requisition.append(procurement.id)
@@ -305,6 +342,10 @@ class procurement_order(osv.osv):
 
         return res
 
-procurement_order()
+    def check_product_requisition(self, cr, uid, ids, context=None):
+        procurement = self.browse(cr, uid, ids, context=context)[0]
+        if procurement.product_id.purchase_requisition:
+            return True
+        return False
 
 # vim:expandtab:smartindent:tabstop=4:softtabstop=4:shiftwidth=4:

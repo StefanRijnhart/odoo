@@ -1,0 +1,51 @@
+<?xml version="1.0"?>
+<openerp>
+    <data>
+
+        <record model="ir.ui.view" id="purchase_requisition_merge_form_view">
+            <field name="name">Form view for purchase requisition merge wizard</field>
+            <field name="model">purchase.requisition.merge</field>
+            <field name="arch" type="xml">
+                <form string="Merge Purchase Requisitions" version="7.0">
+                    <header>
+                        <button name="merge_requisition_lines"
+                                string="Merge" type="object"
+                                class="oe_highlight" />
+                        <button special="cancel" string="cancel" />
+                    </header>
+                    <sheet>
+                        <h1>Purchase Requisition Lines</h1>
+                        <group>
+                            <field name="line_ids" nolabel="1" mode="tree,form"
+                                   context="{'reqline_no_create': True'}">
+                                <tree string="Purchase Requisition Lines">
+                                    <field name="product_id" />
+                                    <field name="product_qty" />
+                                    <field name="warehouse_id" />
+                                    <field name="date_planned" />
+                                    <field name="origin" />
+                                    <field name="requisition_id" />
+                                </tree>
+                            </field>
+                        </group>
+                    </sheet>
+                </form>
+            </field>
+        </record>
+
+        <record model="ir.actions.act_window" id="action_purchase_requisition_merge">
+            <field name="name">Merge Purchase Requisitions</field>
+            <field name="type">ir.actions.act_window</field>
+            <field name="res_model">purchase.requisition.merge</field>
+            <field name="view_type">form</field>
+            <field name="view_mode">form</field>
+        </record>
+
+        <menuitem id="menu_purchase_requisition_merge"
+                  sequence="11"
+                  parent="purchase.menu_procurement_management"
+                  action="action_purchase_requisition_merge"
+            />
+
+    </data>
+</openerp>

@@ -21,7 +21,7 @@
   I check requisition details which created after run procurement.
 -
   !python {model: procurement.order}: |
-    procurement_ids = self.search(cr, uid, [('requisition_id','!=', False)])
+    procurement_ids = self.search(cr, uid, [('requisition_line_id', '!=', False)])
     for procurement in self.browse(cr, uid, procurement_ids, context=context):
         requisition = procurement.requisition_id
         assert requisition.date_end == procurement.date_planned, "End date is not correspond."
