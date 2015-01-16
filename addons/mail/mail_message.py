@@ -730,7 +730,7 @@ class mail_message(osv.Model):
                 model_obj.check_access_rights(cr, uid, operation)
                 model_obj.check_access_rule(cr, uid, mids, operation, context=context)
             document_related_ids += [mid for mid, message in message_values.iteritems()
-                if message.get('model') == model and message.get('res_id') in mids]
+                if message.get('model') == model]
 
         # Calculate remaining ids: if not void, raise an error
         other_ids = other_ids.difference(set(document_related_ids))
