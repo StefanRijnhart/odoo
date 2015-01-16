@@ -451,7 +451,14 @@ class ir_mail_server(osv.osv):
 
             try:
                 smtp = self.connect(smtp_server, smtp_port, smtp_user, smtp_password, smtp_encryption or False, smtp_debug)
-                smtp.sendmail(smtp_from, smtp_to_list, message.as_string())
+                refused = smtp.sendmail(
+                    smtp_from, smtp_to_list, message.as_string())
+                if refused:
+                    raise osv.except_osv(
+                        _("Mail did not reach the following recipients:"),
+                        '\n'.join(["%s: %s" % (
+                                    tools.ustr(recipient), tools.ustr(error))
+                                   for recipient, error in refused.iteritems()]))
             finally:
                 try:
                     # Close Connection of SMTP Server
