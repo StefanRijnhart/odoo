@@ -274,7 +274,7 @@
   <story>
   	<pto>
   	<pto_header>
-  		<blockTable colWidths="50.0,30.0,60.0,60.0,130.0,64.0,64.0,79.0" style="Table2">
+  		<blockTable colWidths="50.0,30.0,80.0,40.0,130.0,64.0,64.0,79.0" style="Table2">
     [[ display_currency(data) == False or removeParentNode('blockTable') ]]
         <tr>
           <td>
@@ -434,7 +434,7 @@
     <para style="terp_default_8">
       <font color="white"> </font>
     </para>
-    <blockTable colWidths="50.0,30.0,60.0,60.0,130.0,64.0,64.0,79.0" style="Table2">
+    <blockTable colWidths="50.0,30.0,80.0,40.0,130.0,64.0,64.0,79.0" style="Table2">
     [[ display_currency(data) == False or removeParentNode('blockTable') ]]
         <tr>
           <td>
@@ -509,7 +509,7 @@
       </section>
       <section>
         <para style="terp_default_8">[[ repeatIn(lines(p), 'line') ]]</para>
-        <blockTable rowHeights="0.55cm" colWidths="50.0,30.0,60.0,60.0,130.0,64.0,64.0,79.0" style="Table6">
+        <blockTable rowHeights="0.55cm" colWidths="50.0,30.0,80.0,40.0,130.0,64.0,64.0,79.0" style="Table6">
           <tr>
             <td>
               <para style="terp_default_8">[[ formatLang(line['date'],date=True) ]]</para>
@@ -518,7 +518,7 @@
               <para style="terp_default_8">[[ line['code'] ]]</para>
             </td>
             <td>
-              <para style="terp_default_8">[[ line['move_name'] ]]</para>
+              <para style="terp_default_8">[[ strip_name(line['move_name'], 17) ]]</para>
             </td>
             <td>
               <para style="terp_default_8">[[ line['a_code'] ]]</para>
@@ -625,7 +625,7 @@
       </section>
       <section>
         <para style="terp_default_8">[[ repeatIn(lines(p), 'line') ]]</para>
-        <blockTable rowHeights="0.55cm" colWidths="45.0,30.0,60.0,50.0,75.0,64.0,64.0,79.0,70.0" style="Table14">
+        <blockTable rowHeights="0.55cm" colWidths="45.0,30.0,70.0,40.0,75.0,64.0,64.0,79.0,70.0" style="Table14">
           <tr>
             <td>
               <para style="terp_default_8">[[ formatLang(line['date'],date=True) ]]</para>
@@ -634,7 +634,7 @@
               <para style="terp_default_8">[[ line['code'] ]]</para>
             </td>
             <td>
-              <para style="terp_default_8">[[ line['move_name'] ]]</para>
+              <para style="terp_default_8">[[ strip_name(line['move_name'], 16) ]]</para>
             </td>
             <td>
               <para style="terp_default_8">[[ line['a_code'] ]]</para>
