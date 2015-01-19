@@ -321,7 +321,7 @@ class procurement_order(osv.osv):
                     }, context=context)
                 requisition_line_id = requisition_line_obj.create(cr, uid,
                    {
-                    'requisition_id': res[procurement.id],
+                    'requisition_id': req,
                     'date_planned': procurement.date_planned,
                     'origin': procurement.origin,
                     'move_dest_id': procurement.move_id.id,
