@@ -98,7 +98,11 @@ def initialize_sys_path():
         ad_paths.append(dd)
 
     for ad in tools.config['addons_path'].split(','):
-        ad = os.path.abspath(tools.ustr(ad.strip()))
+        if not os.path.isabs(ad):
+            ad = os.path.abspath(os.path.join(tools.config['root_path'],
+                                              tools.ustr(ad.strip())))
+        else:
+            ad = os.path.abspath(tools.ustr(ad.strip()))
         if ad not in ad_paths:
             ad_paths.append(ad)
 

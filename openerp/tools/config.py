@@ -474,9 +474,13 @@ class configmanager(object):
                 default_addons.append(main_addons)
             self.options['addons_path'] = ','.join(default_addons)
         else:
-            self.options['addons_path'] = ",".join(
-                    os.path.abspath(os.path.expanduser(os.path.expandvars(x)))
-                      for x in self.options['addons_path'].split(','))
+            paths = []
+            for path in self.options['addons_path'].split(','):
+                path = os.path.expanduser(os.path.expandvars(path.strip()))
+                paths.append(os.path.abspath(
+                    os.path.join(self.options['root_path'], path)
+                    if not os.path.isabs(path) else path))
+            self.options['addons_path'] = ','.join(paths)
 
         self.options['init'] = opt.init and dict.fromkeys(opt.init.split(','), 1) or {}
         self.options["demo"] = not opt.without_demo and self.options['init'] or {}
