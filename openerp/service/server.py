@@ -35,7 +35,7 @@ except ImportError:
     setproctitle = lambda x: None
 
 import openerp
-from openerp import memory_info
+from openerp.http import memory_info
 from openerp.modules.registry import RegistryManager
 from openerp.release import nt_service_name
 import openerp.tools.config as config
