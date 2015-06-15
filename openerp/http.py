@@ -44,6 +44,7 @@ except ImportError:
 
 import openerp
 from openerp import SUPERUSER_ID
+from openerp.service.server import memory_info
 from openerp.service import security, model as service_model
 from openerp.tools.func import lazy_property
 from openerp.tools import ustr
@@ -65,11 +66,6 @@ request = _request_stack()
 """
     A global proxy that always redirect to the current request object.
 """
-
-def memory_info(process):
-    """ psutil < 2.0 does not have memory_info, >= 3.0 does not have
-    get_memory_info """
-    return getattr(process, memory_info, process.get_memory_info)()
 
 def replace_request_password(args):
     # password is always 3rd argument in a request, we replace it in RPC logs

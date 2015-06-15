@@ -35,7 +35,6 @@ except ImportError:
     setproctitle = lambda x: None
 
 import openerp
-from openerp.http import memory_info
 from openerp.modules.registry import RegistryManager
 from openerp.release import nt_service_name
 import openerp.tools.config as config
@@ -44,6 +43,11 @@ from openerp.tools import stripped_sys_argv, dumpstacks, log_ormcache_stats
 _logger = logging.getLogger(__name__)
 
 SLEEP_INTERVAL = 60     # 1 min
+
+def memory_info(process):
+    """ psutil < 2.0 does not have memory_info, >= 3.0 does not have
+    get_memory_info """
+    return (getattr(process, 'memory_info') or process.get_memory_info)()
 
 #----------------------------------------------------------
 # Werkzeug WSGI servers patched
