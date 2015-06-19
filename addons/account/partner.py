@@ -242,10 +242,11 @@ class res_partner(osv.osv):
         result = {}
         account_invoice_report = self.pool.get('account.invoice.report')
         user = self.pool['res.users'].browse(cr, uid, uid, context=context)
+        search_context = dict(context, active_test=False)
         for partner_id in ids:
             # first read invoices in the user's currency
             all_partner_ids = self.pool['res.partner'].search(
-                cr, uid, [('id', 'child_of', partner_id)], context=context)
+                cr, uid, [('id', 'child_of', partner_id)], context=search_context)
             # searching account.invoice.report via the orm is comparatively
             # expensive (searching for many2one fields generates in $idlist
             # queries), so we do the simplest and most common case in sql
