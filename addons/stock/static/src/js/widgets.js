@@ -840,6 +840,43 @@ function openerp_picking_widgets(instance){
             $.bbq.pushState('#action=stock.menu');
             $(window).trigger('hashchange');
         },
+        process_operation_id: function(result, blink) {
+            var self = this;
+            if (result.operation_id !== false){
+                var tr = this.$('.js_pack_op_line[data-id="'+result.operation_id+'"]');
+                if (tr) {
+                    new instance.web.Model('stock.pack.operation').call(
+                        'read',[[result.operation_id], ['qty_done', 'result_package_id'],
+                                new instance.web.CompoundContext()])
+                        .then(function(operations) {
+                            var operation = operations[0];
+                            if (operation.result_package_id[1] === undefined) {
+                                // TODO later: manage products in packages
+
+                                tr.find('.js_qty').value = operation.qty_done;
+                                // tr empty classes
+                                if (operation.product_qty == operation.qty_done){
+                                    tr.addClass('success');
+                                    tr.removeClass('danger');
+                                }
+                                else if (operation.product_qty < operation.qty_done){
+                                    tr.addClass('danger');
+                                    tr.removeClass('success');
+                                }
+                                if (blink !== false) {
+                                    return self.picking_editor.blink(result.operation_id);
+                                }
+                            }
+                        });
+                    }
+            }
+            // Fallback on original behaviour
+            self.refresh_ui(self.picking.id).then(function(){
+                if (blink !== false) {
+                    return self.picking_editor.blink(result.operation_id);
+                }
+            });
+        },
         scan: function(ean){ //scans a barcode, sends it to the server, then reload the ui
             var self = this;
             var product_visible_ids = this.picking_editor.get_visible_ids();
@@ -859,11 +896,7 @@ function openerp_picking_widgets(instance){
                             }
                         }
                     }
-                    if (result.operation_id !== false){
-                        self.refresh_ui(self.picking.id).then(function(){
-                            return self.picking_editor.blink(result.operation_id);
-                        });
-                    }
+                    return self.process_operation_id(result, true);
                 });
         },
         scan_product_id: function(product_id,increment,op_id){ //performs the same operation as a scan, but with product id instead
@@ -871,7 +904,7 @@ function openerp_picking_widgets(instance){
             return new instance.web.Model('stock.picking')
                 .call('process_product_id_from_ui', [self.picking.id, product_id, op_id, increment])
                 .then(function(result){
-                    return self.refresh_ui(self.picking.id);
+                    return self.process_operation_id({'operation_id': result}, false);
                 });
         },
         pack: function(){
