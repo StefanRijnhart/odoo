@@ -730,6 +730,9 @@
 
   // execCommand - executes a designMode command
   function execCommand(editor, command, value, useCSS, button) {
+    // Stefan: hack to make web_cleditor_extended work without security warnings
+    if (command === '')
+      return true;
 
     // Restore the current ie selection
     restoreRange(editor);
