@@ -1016,7 +1016,8 @@
           catch (err) {enabled = false;}
         }
       }
-
+      else if(!command && button.name !== "source")
+          enabled = queryObj.queryCommandEnabled('insertorderedlist');
       // Enable or disable the button
       if (enabled) {
         $elem.removeClass(DISABLED_CLASS);
