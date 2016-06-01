@@ -1671,3 +1671,22 @@
 .fa-meanpath:before {
   content: "\f20c";
 }
+ul.wk_odoo_plus, ul.wk_odoo_minus 
+{ 
+	padding-left:40px; 
+	list-style:none; 
+} 
+ul.wk_odoo_plus > li:before 
+{ 
+	font-family: 'FontAwesome'; 
+	content: "\f055"; 
+	color: green; 
+	margin:0 5px 0 -15px; 
+} 
+ul.wk_odoo_minus > li:before 
+{ 
+	font-family: 'FontAwesome';
+	content: '\f056'; 
+	color: red; 
+	margin:0 5px 0 -15px; 
+}
