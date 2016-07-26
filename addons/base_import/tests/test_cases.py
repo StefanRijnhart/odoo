@@ -86,6 +86,7 @@ class test_o2m(BaseImportCase):
             .get_fields(self.cr, self.uid, 'base_import.tests.models.' + field)
 
     def test_shallow(self):
+        self.maxDiff = None
         self.assertEqualFields(self.get_fields('o2m'), make_field(fields=[
             ID_FIELD,
             # FIXME: should reverse field be ignored?
