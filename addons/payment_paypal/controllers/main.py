@@ -16,9 +16,9 @@ _logger = logging.getLogger(__name__)
 
 
 class PaypalController(http.Controller):
-    _notify_url = 'https://www.roetz-bikes.com/payment/paypal/ipn/'
-    _return_url = 'https://www.roetz-bikes.com/payment/paypal/dpn/'
-    _cancel_url = 'https://www.roetz-bikes.com/payment/paypal/cancel/'
+    _notify_url = '/payment/paypal/ipn/'
+    _return_url = '/payment/paypal/dpn/'
+    _cancel_url = '/payment/paypal/cancel/'
 
     def _get_return_url(self, **post):
         """ Extract the return URL from the data coming from paypal. """
