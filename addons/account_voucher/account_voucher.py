@@ -28,9 +28,6 @@ from openerp.tools.translate import _
 from openerp.tools import float_compare
 from openerp.report import report_sxw
 import openerp
-import logging
-
-_logger = logging.getLogger(__name__)
 
 class res_currency(osv.osv):
     _inherit = "res.currency"
@@ -1207,7 +1204,6 @@ class account_voucher(osv.osv):
                 currency_rate_difference = sign * (line.move_line_id.amount_residual - amount)
             else:
                 currency_rate_difference = 0.0
-            _logger.warning(voucher.partner_id.name)
             move_line = {
                 'journal_id': voucher.journal_id.id,
                 'period_id': voucher.period_id.id,

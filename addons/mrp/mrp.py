@@ -533,7 +533,7 @@ class mrp_production(osv.osv):
         'location_dest_id': fields.many2one('stock.location', 'Finished Products Location', required=True,
             readonly=True, states={'draft': [('readonly', False)]},
             help="Location where the system will stock the finished products."),
-        'date_planned': fields.datetime('Scheduled Date', required=True, select=1, readonly=False, states={'draft': [('readonly', False)]}, copy=False),
+        'date_planned': fields.datetime('Scheduled Date', required=True, select=1, readonly=True, states={'draft': [('readonly', False)]}, copy=False),
         'date_start': fields.datetime('Start Date', select=True, readonly=True, copy=False),
         'date_finished': fields.datetime('End Date', select=True, readonly=True, copy=False),
         'bom_id': fields.many2one('mrp.bom', 'Bill of Material', readonly=True, states={'draft': [('readonly', False)]},
