@@ -47,9 +47,6 @@ class report_custom(report_rml):
             sum = 0
             sum_strd = 0
             prod = product_pool.browse(cr, uid, bom['product_id'])
-            #prod_stock, prod_virt = ''
-            #prod_stock = prod.qty_available
-            #prod_virt = prod.virtual_available
 
             prod_name = to_xml(bom['name'])
             prod_qtty = factor * bom['product_qty']
