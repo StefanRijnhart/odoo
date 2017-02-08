@@ -137,7 +137,7 @@
             <field name="relation_field">project_id</field>
         </record>
 
-        <!-- notify all employees of module installation -->
+        <!-- notify all employees of module installation 
         <record model="mail.message" id="module_install_notification">
             <field name="model">mail.group</field>
             <field name="res_id" ref="mail.group_all_employees"/>
@@ -148,5 +148,6 @@
 <p>You can manage todo lists on tasks by installing the <i>Todo Lists</i> application, supporting the Getting Things Done (GTD) methodology.</p>
 <p>You can also manage issues/bugs in projects by installing the "Issue Tracker" application.</p>]]></field>
         </record>
+-->
     </data>
 </openerp>

@@ -50,7 +50,9 @@ class AcquirerBuckaroo(osv.Model):
         assert inout in ('in', 'out')
         assert acquirer.provider == 'buckaroo'
 
-        keys = "add_returndata Brq_amount Brq_culture Brq_currency Brq_invoicenumber Brq_return Brq_returncancel Brq_returnerror Brq_returnreject brq_test Brq_websitekey".split()
+        #keys = "add_returndata Brq_amount Brq_culture Brq_currency Brq_invoicenumber Brq_return Brq_returncancel Brq_returnerror Brq_returnreject Brq_test Brq_websitekey".split()
+        keys = "Brq_amount Brq_culture Brq_currency Brq_invoicenumber brq_test Brq_websitekey".split()
+
 
         def get_value(key):
             if values.get(key):
@@ -60,9 +62,10 @@ class AcquirerBuckaroo(osv.Model):
         values = dict(values or {})
 
         if inout == 'out':
-            if 'BRQ_SIGNATURE' in values:
-                del values['BRQ_SIGNATURE']
-            items = sorted((k.upper(), v) for k, v in values.items())
+            if 'brq_signature' in values:
+                del values['brq_signature']
+            #items = sorted((k.upper(), v) for k, v in values.items())
+            items = sorted((k, v) for k, v in values.items())
             sign = ''.join('%s=%s' % (k, v) for k, v in items)
         else:
             sign = ''.join('%s=%s' % (k,get_value(k)) for k in keys)
@@ -70,6 +73,8 @@ class AcquirerBuckaroo(osv.Model):
         sign = sign + acquirer.brq_secretkey
         if isinstance(sign, str):
             sign = urlparse.parse_qsl(sign)
+        _logger.info(sign)
+        sign = sign.encode('UTF-8')
         shasign = sha1(sign).hexdigest()
         return shasign
 
@@ -123,7 +128,7 @@ class TxBuckaroo(osv.Model):
     def _buckaroo_form_get_tx_from_data(self, cr, uid, data, context=None):
         """ Given a data dict coming from buckaroo, verify it and find the related
         transaction record. """
-        reference, pay_id, shasign = data.get('BRQ_INVOICENUMBER'), data.get('BRQ_PAYMENT'), data.get('BRQ_SIGNATURE')
+        reference, pay_id, shasign = data.get('brq_invoicenumber'), data.get('brq_transactions'), data.get('brq_signature')
         if not reference or not pay_id or not shasign:
             error_msg = 'Buckaroo: received data with missing reference (%s) or pay_id (%s) or shashign (%s)' % (reference, pay_id, shasign)
             _logger.error(error_msg)
@@ -151,35 +156,36 @@ class TxBuckaroo(osv.Model):
 
     def _buckaroo_form_get_invalid_parameters(self, cr, uid, tx, data, context=None):
         invalid_parameters = []
-
-        if tx.acquirer_reference and data.get('BRQ_TRANSACTIONS') != tx.acquirer_reference:
-            invalid_parameters.append(('Transaction Id', data.get('BRQ_TRANSACTIONS'), tx.acquirer_reference))
+        _logger.warning(tx)
+        _logger.warning(data)
+        if tx.acquirer_reference and data.get('brq_transactions') != tx.acquirer_reference:
+            invalid_parameters.append(('Transaction Id', data.get('brq_transactions'), tx.acquirer_reference))
         # check what is buyed
-        if float_compare(float(data.get('BRQ_AMOUNT', '0.0')), tx.amount, 2) != 0:
-            invalid_parameters.append(('Amount', data.get('BRQ_AMOUNT'), '%.2f' % tx.amount))
-        if data.get('BRQ_CURRENCY') != tx.currency_id.name:
-            invalid_parameters.append(('Currency', data.get('BRQ_CURRENCY'), tx.currency_id.name))
+        if float_compare(float(data.get('brq_amount', '0.0')), tx.amount, 2) != 0:
+            invalid_parameters.append(('Amount', data.get('brq_amount'), '%.2f' % tx.amount))
+        if data.get('brq_currency') != tx.currency_id.name:
+            invalid_parameters.append(('Currency', data.get('brq_currency'), tx.currency_id.name))
 
         return invalid_parameters
 
     def _buckaroo_form_validate(self, cr, uid, tx, data, context=None):
-        status_code = int(data.get('BRQ_STATUSCODE','0'))
+        status_code = int(data.get('brq_statuscode','0'))
         if status_code in self._buckaroo_valid_tx_status:
             tx.write({
                 'state': 'done',
-                'buckaroo_txnid': data.get('BRQ_TRANSACTIONS'),
+                'buckaroo_txnid': data.get('brq_transactions'),
             })
             return True
         elif status_code in self._buckaroo_pending_tx_status:
             tx.write({
                 'state': 'pending',
-                'buckaroo_txnid': data.get('BRQ_TRANSACTIONS'),
+                'buckaroo_txnid': data.get('brq_transactions'),
             })
             return True
         elif status_code in self._buckaroo_cancel_tx_status:
             tx.write({
                 'state': 'cancel',
-                'buckaroo_txnid': data.get('BRQ_TRANSACTIONS'),
+                'buckaroo_txnid': data.get('brq_transactions'),
             })
             return True
         else:
@@ -188,6 +194,6 @@ class TxBuckaroo(osv.Model):
             tx.write({
                 'state': 'error',
                 'state_message': error,
-                'buckaroo_txnid': data.get('BRQ_TRANSACTIONS'),
+                'buckaroo_txnid': data.get('brq_transactions'),
             })
             return False

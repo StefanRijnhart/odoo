@@ -552,7 +552,7 @@ class website_sale(http.Controller):
 
         order_info = {
             'partner_id': partner_id,
-            'message_follower_ids': [(4, partner_id), (3, request.website.partner_id.id)],
+            #'message_follower_ids': [(4, partner_id), (3, request.website.partner_id.id)],
             'partner_invoice_id': partner_id,
         }
         order_info.update(order_obj.onchange_partner_id(cr, SUPERUSER_ID, [], partner_id, context=context)['value'])
@@ -566,7 +566,7 @@ class website_sale(http.Controller):
 
         order_info.pop('user_id')
         order_info.update(partner_shipping_id=checkout.get('shipping_id') or partner_id)
-
+        
         order_obj.write(cr, SUPERUSER_ID, [order.id], order_info, context=context)
 
     @http.route(['/shop/checkout'], type='http', auth="public", website=True)
@@ -797,8 +797,8 @@ class website_sale(http.Controller):
                 # Orders are confirmed by payment transactions, but there is none for free orders,
                 # (e.g. free events), so confirm immediately
                 order.action_button_confirm()
-            # send by email
-            email_act = sale_order_obj.action_quotation_send(cr, SUPERUSER_ID, [order.id], context=request.context)
+            # send by email (UITGESCHAKELD)
+            #email_act = sale_order_obj.action_quotation_send(cr, SUPERUSER_ID, [order.id], context=request.context)
         elif tx and tx.state == 'cancel':
             # cancel the quotation
             sale_order_obj.action_cancel(cr, SUPERUSER_ID, [order.id], context=request.context)

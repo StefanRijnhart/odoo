@@ -1161,9 +1161,9 @@ class account_move(osv.osv):
             GROUP BY    move_id
             HAVING      abs(sum(debit) - sum(credit)) > 0.00001
             """)
-        assert len(cr.fetchall()) == 0, \
-            "For all Journal Items, the state is valid implies that the sum " \
-            "of credits equals the sum of debits"
+#        assert len(cr.fetchall()) == 0, \
+#            "For all Journal Items, the state is valid implies that the sum " \
+#            "of credits equals the sum of debits"
         return True
 
     def account_move_prepare(self, cr, uid, journal_id, date=False, ref='', company_id=False, context=None):
@@ -1658,7 +1658,8 @@ class account_move_reconcile(osv.osv):
         return True
 
     _constraints = [
-        (_check_same_partner, 'You can only reconcile journal items with the same partner.', ['line_id', 'line_partial_ids']),
+        # UITGESCHAKELD ivm betaling via payment acquirers
+        #(_check_same_partner, 'You can only reconcile journal items with the same partner.', ['line_id', 'line_partial_ids']),
     ]
     
     def reconcile_partial_check(self, cr, uid, ids, type='auto', context=None):

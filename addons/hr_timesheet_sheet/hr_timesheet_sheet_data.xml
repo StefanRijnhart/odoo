@@ -1,7 +1,7 @@
 <?xml version="1.0" ?>
 <openerp>
     <data noupdate="1">
-        <!-- notify all employees of module installation -->
+        <!-- notify all employees of module installation
         <record model="mail.message" id="hr_timesheet_module_install_notification">
             <field name="model">mail.group</field>
             <field name="res_id" ref="mail.group_all_employees"/>
@@ -10,6 +10,7 @@
             <field name="subject">Timesheet Validation application installed!</field>
             <field name="body"><![CDATA[<p>From the top menu "Human Resources", enter and validate timesheets and attendances.</p>]]></field>
         </record>
+-->
 
         <record id="ir_actions_server_timsheet_sheet" model="ir.actions.server">
             <field name="sequence" eval="5"/>

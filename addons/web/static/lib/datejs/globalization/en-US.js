@@ -18,7 +18,7 @@ Date.CultureInfo = {
     amDesignator: "AM",
     pmDesignator: "PM",
 
-    firstDayOfWeek: 0,
+    firstDayOfWeek: 1,
     twoDigitYearMax: 2029,
     
     /**
