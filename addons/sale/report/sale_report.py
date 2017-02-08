@@ -44,7 +44,6 @@ class sale_report(osv.osv):
         'nbr': fields.integer('# of Lines', readonly=True),  # TDE FIXME master: rename into nbr_lines
         'state': fields.selection([
             ('draft', 'Quotation'),
-            ('sent', 'Quotation Sent'),
             ('waiting_date', 'Waiting Schedule'),
             ('manual', 'Manual In Progress'),
             ('progress', 'In Progress'),
@@ -72,7 +71,7 @@ class sale_report(osv.osv):
                     s.user_id as user_id,
                     s.company_id as company_id,
                     extract(epoch from avg(date_trunc('day',s.date_confirm)-date_trunc('day',s.create_date)))/(24*60*60)::decimal(16,2) as delay,
-                    l.state,
+                    s.state,
                     t.categ_id as categ_id,
                     s.pricelist_id as pricelist_id,
                     s.project_id as analytic_account_id,
@@ -102,7 +101,7 @@ class sale_report(osv.osv):
                     s.partner_id,
                     s.user_id,
                     s.company_id,
-                    l.state,
+                    s.state,
                     s.pricelist_id,
                     s.project_id,
                     s.section_id
