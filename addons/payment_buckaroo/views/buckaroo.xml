@@ -12,7 +12,7 @@
                 <input type="hidden" name="brq_test" t-att-value="tx_values['brq_test']"/>
                 <input type="hidden" name="Brq_culture" t-att-value="tx_values['Brq_culture']"/>
                 <!-- URLs -->
-                <!--<input t-if="tx_values.get('Brq_return')" type='hidden' name='Brq_return'
+                <input t-if="tx_values.get('Brq_return')" type='hidden' name='Brq_return'
                     t-att-value="tx_values.get('Brq_return')"/>
                 <input t-if="tx_values.get('Brq_returncancel')" type='hidden' name='Brq_returncancel'
                     t-att-value="tx_values.get('Brq_returncancel')"/>
@@ -20,7 +20,7 @@
                     t-att-value="tx_values.get('Brq_returnerror')"/>
                 <input t-if="tx_values.get('Brq_returnreject')" type='hidden' name='Brq_returnreject'
                     t-att-value="tx_values.get('Brq_returnreject')"/>
-                <input type='hidden' name='add_returndata' t-att-value="tx_values.get('add_returndata')"/>-->
+                <input type='hidden' name='add_returndata' t-att-value="tx_values.get('add_returndata')"/>
                 <!-- submit -->
                 <button type="submit" width="100px"
                     t-att-class="submit_class">
