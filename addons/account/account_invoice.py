@@ -26,9 +26,6 @@ from openerp import models, fields, api, _
 from openerp.exceptions import except_orm, Warning, RedirectWarning
 from openerp.tools import float_compare
 import openerp.addons.decimal_precision as dp
-import logging
-
-_logger = logging.getLogger(__name__)
 
 # mapping invoice type to journal type
 TYPE2JOURNAL = {
@@ -887,8 +884,7 @@ class account_invoice(models.Model):
             date = date_invoice
 
             part = self.env['res.partner']._find_accounting_partner(inv.partner_id)
-            _logger.warning(part.id)            
-            
+
             line = [(0, 0, self.line_get_convert(l, part.id, date)) for l in iml]
             line = inv.group_lines(iml, line)
 
@@ -1630,10 +1626,7 @@ class res_partner(models.Model):
         '''
         Find the partner for which the accounting entries will be created
         '''
-        #if partner.commercial_partner_id:
         return partner.commercial_partner_id
-        #else:
-        #    return partner
 
 class mail_compose_message(models.Model):
     _inherit = 'mail.compose.message'
