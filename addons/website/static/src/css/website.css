@@ -132,8 +132,7 @@ header a.navbar-brand img {
 }
 #oe_main_menu_navbar li a, #oe_main_menu_navbar li button {
   padding: 4px 8px 4px 8px;
-  margin-top: 0px;
-  margin-bottom: 7px;
+  margin-top: 2px;
   font-size: 13px;
 }
 #oe_main_menu_navbar .navbar-nav.navbar-right:last-child {
@@ -153,7 +152,7 @@ header a.navbar-brand img {
 
 /* ----- BOOTSTRAP HACK FOR HEADER NAV BAR ----- */
 .navbar.navbar-static-top {
-  margin-bottom: 0px;
+  margin-bottom: 0;
 }
 .navbar.navbar-static-top ul.nav > li.divider {
   margin-top: 15px;
@@ -672,12 +671,4 @@ div.carousel .item.text_only .container > .carousel-caption > div {
 }
 div.carousel .item.text_only .container > .carousel-image {
   display: none !important;
-}
-div.hidehover {
-    opacity: 1.0;
-    filter: alpha(opacity=100); /* For IE8 and earlier */
-}
-div.hidehover:hover {
-    opacity: 0.0;
-    filter: alpha(opacity=0); /* For IE8 and earlier */
 }
