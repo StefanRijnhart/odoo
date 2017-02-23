@@ -21,7 +21,7 @@
 
 
 {
-    'name': 'Dates on Sales Order Modified By Roetz',
+    'name': 'Dates on Sales Order',
     'version': '1.1',
     'category': 'Sales Management',
     'description': """
@@ -33,9 +33,8 @@ You can add the following additional dates to a sales order:
     * Requested Date (will be used as the expected date on pickings)
     * Commitment Date
     * Effective Date
-    * New Commitment Date (to communicate delays to customer)
 """,
-    'author': 'OpenERP SA modified by Roetz',
+    'author': 'OpenERP SA',
     'website': 'https://www.odoo.com/page/crm',
     'depends': ['sale_stock'],
     'data': ['sale_order_dates_view.xml'],

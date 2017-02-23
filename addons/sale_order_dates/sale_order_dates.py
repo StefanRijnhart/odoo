@@ -65,9 +65,7 @@ class sale_order_dates(osv.osv):
                 dt_s = dt.strftime(DEFAULT_SERVER_DATETIME_FORMAT)
                 dates_list.append(dt_s)
             if dates_list:
-                ### Edit Tiemen: max ipv min
-                #res[order.id] = min(dates_list)
-                res[order.id] = max(dates_list)                
+                res[order.id] = min(dates_list)
         return res
 
     def onchange_requested_date(self, cr, uid, ids, requested_date,
@@ -104,7 +102,6 @@ class sale_order_dates(osv.osv):
         'effective_date': fields.function(_get_effective_date, type='date',
             store=True, string='Effective Date',
             help="Date on which the first Delivery Order was created."),
-        'new_commitment_date': fields.datetime('New Commitment Date'),
     }
 
 
