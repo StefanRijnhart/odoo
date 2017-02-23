@@ -18,6 +18,7 @@ Date.CultureInfo = {
     amDesignator: "AM",
     pmDesignator: "PM",
 
+    // Stefan: can this be fixed by setting the users' correct localization?
     firstDayOfWeek: 1,
     twoDigitYearMax: 2029,
     
