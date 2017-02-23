@@ -85,8 +85,7 @@ class stock_quant(osv.osv):
             move = self._get_latest_move(cr, uid, quant, context=context)
             # this is where we post accounting entries for adjustment
             ctx['force_valuation_amount'] = newprice - quant.cost
-            if move:
-                self._account_entry_move(cr, uid, [quant], move, context=ctx)
+            self._account_entry_move(cr, uid, [quant], move, context=ctx)
             #update the standard price of the product, only if we would have done it if we'd have had enough stock at first, which means
             #1) the product cost's method is 'real'
             #2) we just fixed a negative quant caused by an outgoing shipment
@@ -102,11 +101,9 @@ class stock_quant(osv.osv):
         """
         if context is None:
             context = {}
-
         location_obj = self.pool.get('stock.location')
         location_from = move.location_id
         location_to = quants[0].location_id
-
         company_from = location_obj._location_owner(cr, uid, location_from, context=context)
         company_to = location_obj._location_owner(cr, uid, location_to, context=context)
 
