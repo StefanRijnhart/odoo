@@ -437,30 +437,13 @@ ul.wizard li.text-success .chevron:before {
   border-left: 10px solid whitesmoke;
 }
 
-ul.wizard li:first-child {
-background: #89181A;
-}
-
-ul.wizard li{
-  background: #89181A !important;
-}
-
-ul.wizard li.text-muted {
-  background: #fbfbfb !important;
+ul.wizard li.text-primary {
+  background: #f1f6fc;
 }
 
 ul.wizard li.text-primary .chevron:before {
-  border-left: 10px solid #89181A;
+  border-left: 10px solid #f1f6fc;
 }
-
-ul.wizard li .chevron:before {
-  border-left: 10px solid #89181A;
-}
-
-ul.wizard li.text-muted .chevron:before {
-  border-left: 10px solid #fbfbfb !important;
-}
-
 
 ul.wizard li:first-child {
   padding-left: 15px;
