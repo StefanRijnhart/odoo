@@ -173,7 +173,8 @@ class product_product(osv.osv):
             id = product.id
             qty_available = float_round(quants.get(id, 0.0), precision_rounding=product.uom_id.rounding)
             incoming_qty = float_round(moves_in.get(id, 0.0), precision_rounding=product.uom_id.rounding)
-            outgoing_qty = float_round(moves_out.get(id, 0.0), precision_rounding=product.uom_id.rounding)
+            outgoing_qty = moves_out.get(id, 0.0)
+            #outgoing_qty = float_round(moves_out.get(id, 0.0), precision_rounding=product.uom_id.rounding)
             virtual_available = float_round(quants.get(id, 0.0) + moves_in.get(id, 0.0) - moves_out.get(id, 0.0), precision_rounding=product.uom_id.rounding)
             res[id] = {
                 'qty_available': qty_available,
