@@ -1435,6 +1435,11 @@ class mail_thread(osv.AbstractModel):
             self.message_subscribe(cr, uid, ids, [pid], subtypes, context=context)
 
         # find first email message, set it as unread for auto_subscribe fields for them to have a notification
+        # Stefan, 2017-03-26 receiving old messages when a salesman changes
+        # really confuses people so we leave early. In later versions,
+        # monkeypatch _message_auto_subscribe_notify
+        return True
+
         if user_pids:
             for record_id in ids:
                 message_obj = self.pool.get('mail.message')
