@@ -2158,7 +2158,7 @@ class account_tax(osv.osv):
             tax = {'name':'', 'amount':0.0, 'account_collected_id':1, 'account_paid_id':2}
             one tax for each tax id in IDS and their children
         """
-        if not precision:
+        if precision is None:
             precision = self.pool.get('decimal.precision').precision_get(cr, uid, 'Account')
         res = self._unit_compute(cr, uid, taxes, price_unit, product, partner, quantity)
         total = 0.0
@@ -2261,7 +2261,7 @@ class account_tax(osv.osv):
             tax = {'name':'', 'amount':0.0, 'account_collected_id':1, 'account_paid_id':2}
             one tax for each tax id in IDS and their children
         """
-        if not precision:
+        if precision is None:
             precision = self.pool.get('decimal.precision').precision_get(cr, uid, 'Account')
         res = self._unit_compute_inv(cr, uid, taxes, price_unit, product, partner=None)
         total = 0.0
