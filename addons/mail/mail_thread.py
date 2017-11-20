@@ -1280,7 +1280,7 @@ class mail_thread(osv.AbstractModel):
         # Content-Type: multipart/related;
         #   boundary="_004_3f1e4da175f349248b8d43cdeb9866f1AMSPR06MB343eurprd06pro_";
         #   type="text/html"
-        if not message.is_multipart() or message.get('content-type', '').startswith("text/"):
+        if message.get_content_maintype() == 'text':
             encoding = message.get_content_charset()
             body = message.get_payload(decode=True)
             body = tools.ustr(body, encoding, errors='replace')

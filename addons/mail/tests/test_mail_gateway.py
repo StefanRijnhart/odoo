@@ -193,6 +193,19 @@ Content-Type: text/html;
 --Apple-Mail=_9331E12B-8BD2-4EC7-B53E-01F3FBEC9227--
 """
 
+MAIL_SINGLE_BINARY = """X-Original-To: raoul@grosbedon.fr
+Delivered-To: raoul@grosbedon.fr
+Received: by mail1.grosbedon.com (Postfix, from userid 10002)
+    id E8166BFACA; Fri, 23 Aug 2013 13:18:01 +0200 (CEST)
+From: "Bruce Wayne" <bruce@wayneenterprises.com>
+Content-Type: application/pdf;
+Content-Disposition: filename=thetruth.pdf
+Content-Transfer-Encoding: base64
+Message-Id: <6BB1FAB2-2104-438E-9447-07AE2C8C4A92@sexample.com>
+Mime-Version: 1.0 (Mac OS X Mail 7.3 \(1878.6\))
+
+SSBhbSB0aGUgQmF0TWFuCg=="""
+
 class TestMailgateway(TestMail):
 
     def test_00_message_parse(self):
@@ -220,6 +233,10 @@ class TestMailgateway(TestMail):
                       'message_parse: first part of the html version should be in body after parsing multipart/mixed')
         self.assertIn('Second part', res.get('body', ''),
                       'message_parse: second part of the html version should be in body after parsing multipart/mixed')
+
+        res = self.mail_thread.message_parse(cr, uid, MAIL_SINGLE_BINARY)
+        self.assertEqual(res['body'], '')
+        self.assertEqual(res['attachments'][0][0], 'thetruth.pdf')
 
     @mute_logger('openerp.addons.mail.mail_thread', 'openerp.models')
     def test_10_message_process(self):
