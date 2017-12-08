@@ -20,6 +20,6 @@ have real delivered quantities in sales orders.
     'data': ['views/sale_timesheet_view.xml',
              'data/sale_timesheet_data.xml'],
     'demo': ['data/sale_timesheet_demo.xml'],
-    'installable': True,
-    'auto_install': True,
+    'installable': False,
+    'auto_install': False,
 }

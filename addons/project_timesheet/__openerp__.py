@@ -27,6 +27,6 @@ with the effect of creating, editing and deleting either ways.
     'test': [
         'test/worktask_entry_to_timesheetline_entry.yml',
     ],
-    'installable': True,
-    'auto_install': True,
+    'installable': False,
+    'auto_install': False,
 }
