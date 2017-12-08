@@ -26,5 +26,6 @@ have real delivered quantities in sales orders.
     'demo': [
         'data/sale_service_demo.xml',
     ],
-    'auto_install': True,
+    'auto_install': False,
+    'installable': False,
 }
