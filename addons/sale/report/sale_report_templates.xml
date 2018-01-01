@@ -62,7 +62,7 @@
                             <th class="text-right">Quantity</th>
                             <th class="text-right">Unit Price</th>
                             <th t-if="display_discount" class="text-right" groups="sale.group_discount_per_so_line">Disc.(%)</th>
-                            <th class="text-right">Taxes</th>
+                            <th name="taxes" class="text-right">Taxes</th>
                             <th class="text-right" groups="sale.group_show_price_subtotal">Price</th>
                             <th class="text-right price_tax_included" groups="sale.group_show_price_total">Total Price</th>
                         </tr>
