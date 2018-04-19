@@ -241,14 +241,11 @@ class res_partner(osv.osv):
         return self._asset_difference_search(cr, uid, obj, name, 'payable', args, context=context)
 
     def _invoice_total(self, cr, uid, ids, field_name, arg, context=None):
-        result = {}
+        result = dict([(res_id, 0) for res_id in (ids or [])])
         account_invoice_report = self.pool.get('account.invoice.report')
         user = self.pool['res.users'].browse(cr, uid, uid, context=context)
         user_currency_id = user.company_id.currency_id.id
-        for partner_id in ids:
-            all_partner_ids = self.pool['res.partner'].search(
-                cr, uid, [('id', 'child_of', partner_id)], context=context)
-
+        if ids:
             # searching account.invoice.report via the orm is comparatively expensive
             # (generates queries "id in []" forcing to build the full table).
             # In simple cases where all invoices are in the same currency than the user's company
@@ -256,7 +253,7 @@ class res_partner(osv.osv):
 
             # generate where clause to include multicompany rules
             where_query = account_invoice_report._where_calc(cr, uid, [
-                ('partner_id', 'in', all_partner_ids), ('state', 'not in', ['draft', 'cancel'])
+                ('commercial_partner_id', 'in', ids), ('state', 'not in', ['draft', 'cancel'])
             ], context=context)
             account_invoice_report._apply_ir_rules(cr, uid, where_query, 'read', context=context)
             from_clause, where_clause, where_clause_params = where_query.get_sql()
@@ -270,19 +267,20 @@ class res_partner(osv.osv):
                                      LIMIT 1) AS date_end
                                 FROM res_currency_rate r
                                 )
-                      SELECT SUM(price_total * cr.rate) as total
+                      SELECT commercial_partner_id, SUM(price_total * cr.rate) as total
                         FROM account_invoice_report account_invoice_report, currency_rate cr
                        WHERE %s
                          AND cr.currency_id = %%s
                          AND (COALESCE(account_invoice_report.date, NOW()) >= cr.date_start)
                          AND (COALESCE(account_invoice_report.date, NOW()) < cr.date_end OR cr.date_end IS NULL)
                          AND account_invoice_report.type in ('out_invoice', 'out_refund')
+                       GROUP BY commercial_partner_id
                     """ % where_clause
 
             # price_total is in the currency with rate = 1
             # total_invoice should be displayed in the current user's currency
             cr.execute(query, where_clause_params + [user_currency_id])
-            result[partner_id] = cr.fetchone()[0]
+            result.update(dict(cr.fetchall()))
 
         return result
 
