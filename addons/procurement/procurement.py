@@ -19,6 +19,7 @@
 #
 ##############################################################################
 
+import logging
 import time
 from psycopg2 import OperationalError
 
@@ -28,6 +29,7 @@ import openerp.addons.decimal_precision as dp
 from openerp.tools.translate import _
 import openerp
 
+_logger = logging.getLogger(__name__)
 PROCUREMENT_PRIORITIES = [('0', 'Not urgent'), ('1', 'Normal'), ('2', 'Urgent'), ('3', 'Very Urgent')]
 
 class procurement_group(osv.osv):
@@ -215,6 +217,7 @@ class procurement_order(osv.osv):
                         cr.commit()
                 except OperationalError:
                     if autocommit:
+                        _logger.exception('Could not process procurement %s', procurement.id)
                         cr.rollback()
                         continue
                     else:
@@ -232,6 +235,7 @@ class procurement_order(osv.osv):
                     cr.commit()
             except OperationalError:
                 if autocommit:
+                    _logger.exception('Could not process procurement %s', procurement.id)
                     cr.rollback()
                     continue
                 else:

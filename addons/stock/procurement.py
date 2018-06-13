@@ -19,6 +19,7 @@
 #
 ##############################################################################
 
+import logging
 from openerp.osv import fields, osv
 from openerp.tools.translate import _
 
@@ -28,6 +29,9 @@ from dateutil.relativedelta import relativedelta
 from datetime import datetime
 from psycopg2 import OperationalError
 import openerp
+
+_logger = logging.getLogger(__name__)
+
 
 class procurement_group(osv.osv):
     _inherit = 'procurement.group'
@@ -287,13 +291,18 @@ class procurement_order(osv.osv):
 
             #Search all confirmed stock_moves and try to assign them
             confirmed_ids = move_obj.search(cr, uid, [('state', '=', 'confirmed')], limit=None, order='priority desc, date_expected asc', context=context)
+            _logger.debug('Trying to assign %s stock moves', len(confirmed_ids))
             for x in xrange(0, len(confirmed_ids), 100):
                 move_obj.action_assign(cr, uid, confirmed_ids[x:x + 100], context=context)
                 if use_new_cursor:
                     cr.commit()
+            _logger.debug('Done assigning %s stock moves', len(confirmed_ids))
 
             if use_new_cursor:
                 cr.commit()
+        except Exception:
+            if use_new_cursor:
+                _logger.exception('Could not assign moves')
         finally:
             if use_new_cursor:
                 try:
