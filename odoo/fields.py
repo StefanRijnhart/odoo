@@ -2508,11 +2508,13 @@ class Many2many(_RelationalMulti):
 
         if clear and not create:
             # remove all records for which user has access rights
-            clauses, params, tables = comodel.env['ir.rule'].domain_get(comodel._name)
-            cond = " AND ".join(clauses) if clauses else "1=1"
-            query = """ DELETE FROM {rel} USING {tables}
-                        WHERE {rel}.{id1} IN %s AND {rel}.{id2}={table}.id AND {cond}
-                    """.format(table=comodel._table, tables=','.join(tables), cond=cond, **parts)
+            rule_query = comodel.env['ir.rule'].domain_get(comodel._name)
+            from_clause, cond, params = rule_query.get_sql()
+            cond = cond or "1=1"
+            query = """ DELETE FROM {rel}
+                        WHERE {rel}.{id1} IN %s AND {rel}.{id2} IN (
+                             SELECT {table}.id FROM {from_clause} WHERE {cond})
+                    """.format(table=comodel._table, cond=cond, from_clause=from_clause, **parts)
             cr.execute(query, [tuple(records.ids)] + params)
 
         # link records to the ids such that links[id] = True
