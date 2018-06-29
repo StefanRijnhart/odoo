@@ -323,7 +323,7 @@ class Cursor(object):
             self._cnx.leaked = True
         else:
             chosen_template = tools.config['db_template']
-            templates_list = tuple(set(['template0', 'template1', 'postgres', chosen_template]))
+            templates_list = tuple(set(['template0', 'template1', chosen_template]))
             keep_in_pool = self.dbname not in templates_list
             self.__pool.give_back(self._cnx, keep_in_pool=keep_in_pool)
 
