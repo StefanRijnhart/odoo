@@ -506,7 +506,7 @@ class MailTemplate(models.Model):
             for res_id in template_res_ids:
                 values = results[res_id]
                 # body: add user signature, sanitize
-                if 'body_html' in fields and template.user_signature:
+                if 'body_html' in fields and template.user_signature and self.env.context.get('mail_notify_user_signature', True):
                     signature = self.env.user.signature
                     if signature:
                         values['body_html'] = tools.append_content_to_html(values['body_html'], signature, plaintext=False)
