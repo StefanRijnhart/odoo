@@ -178,6 +178,11 @@ def get_pg_type(f, type_override=None):
 
     if field_type in FIELDS_TO_PGTYPES:
         pg_type =  (FIELDS_TO_PGTYPES[field_type], FIELDS_TO_PGTYPES[field_type])
+        if field_type == fields.integer and getattr(f, 'bigint', False):
+            pg_type = ('int8', 'int8')
+        elif field_type == fields.many2one:
+            pg_type = getattr(f, '_obj_pgtype', pg_type)
+
     elif issubclass(field_type, fields.float):
         # Explicit support for "falsy" digits (0, False) to indicate a
         # NUMERIC field with no fixed precision. The values will be saved
@@ -207,6 +212,55 @@ def get_pg_type(f, type_override=None):
 
     return pg_type
 
+def get_indexes(cr, table, column):
+    """ Get the index names and definitions affecting a specific column """
+    # https://stackoverflow.com/questions/2204058/list-columns-with-indexes-in-postgresql
+    cr.execute(
+        """SELECT t.relname AS table_name,
+            pgi.indexname,
+            pgi.indexdef
+        FROM pg_class t,
+            pg_class i,
+            pg_index ix,
+            pg_attribute a,
+            pg_indexes pgi
+        WHERE t.oid = ix.indrelid
+            AND i.oid = ix.indexrelid
+            AND a.attrelid = t.oid
+            AND a.attname = %s
+            AND a.attnum = ANY(ix.indkey)
+            AND t.relkind = 'r'
+            AND t.relname = %s
+            AND pgi.tablename = %s
+            AND pgi.indexname = i.relname
+        """, (column, table, table))
+    return set([row for row in cr.fetchall()])
+
+def get_fk_constraints(cr, table, column):
+    cr.execute(
+        """
+        SELECT kcu.table_name,
+            CASE
+                -- Allow to deduplicate multi column FK
+                WHEN constraint_type != 'FOREIGN KEY'
+                THEN ''
+                ELSE kcu.column_name
+            END,
+            tc.constraint_name,
+            pg_get_constraintdef(pgc.oid) AS constraintdef,
+            tc.constraint_type
+        FROM information_schema.table_constraints AS tc
+        JOIN information_schema.key_column_usage AS kcu
+            ON tc.constraint_name = kcu.constraint_name
+        JOIN information_schema.constraint_column_usage AS ccu
+            ON ccu.constraint_name = tc.constraint_name
+        JOIN pg_constraint pgc
+            ON pgc.conname = tc.constraint_name
+                AND tc.table_name = pgc.conrelid::regclass::text
+        WHERE ccu.table_name = %s and ccu.column_name = %s
+        """, (table, column))
+    return sorted(list(set(row for row in cr.fetchall())),
+                  key=lambda row: row[4] != 'PRIMARY KEY')
 
 class MetaModel(api.Meta):
     """ Metaclass for the models.
@@ -301,6 +355,7 @@ class BaseModel(object):
     _auto = True # create database backend
     _register = False # Set to false if the model shouldn't be automatically discovered.
     _name = None
+    _bigint_id = False
     _columns = {}
     _constraints = []
     _custom = False
@@ -517,7 +572,7 @@ class BaseModel(object):
         from . import fields
 
         # this field 'id' must override any other column or field
-        cls._add_field('id', fields.Id(automatic=True))
+        cls._add_field('id', fields.Id(automatic=True, bigint=cls._bigint_id))
 
         add('display_name', fields.Char(string='Display Name', automatic=True,
             compute='_compute_display_name'))
@@ -2474,11 +2529,19 @@ class BaseModel(object):
             column_data = self._select_column_data(cr)
 
             for k, f in self._columns.iteritems():
-                if k == 'id': # FIXME: maybe id should be a regular column?
-                    continue
                 # Don't update custom (also called manual) fields
                 if f.manual and not update_custom_fields:
                     continue
+
+                # Inject the FK target column's integer type
+                # so that it can be returned by `get_pg_type`
+                if hasattr(f, '_obj') and f._obj:
+                    target_data = self.pool[f._obj]._select_column_data(cr).get('id')
+                    if target_data:
+                        target_pg_type = target_data['typname']
+                    else:
+                        target_pg_type = 'int8' if self.pool[f._obj]._bigint_id else 'int4'
+                    setattr(f, '_obj_pg_type', target_pg_type)
 
                 if isinstance(f, fields.one2many):
                     self._o2m_raise_on_missing_reference(cr, f)
@@ -2523,6 +2586,86 @@ class BaseModel(object):
 
                         if f_obj_type:
                             ok = False
+                            if f_pg_type == 'int8' and f_obj_type == 'int4':
+                                # Don't touch columns migrated to int8 previously.
+                                # This allows to upgrade the column type in a custom addon.
+                                ok = True
+                            elif f_pg_type == 'int4' and f_obj_type == 'int8':
+                                # Drop indexes and FK constraints
+                                # Copy values
+                                # Migrate FK reference columns
+                                # Recreate indexes and constraints
+                                log_prefix = 'column %s.%s int4->int8' % (self._table, k)
+
+                                def migrate_to_int8(table, column, recursive=False):
+                                    # TODO: fetch, drop and recreate depending views
+                                    indexes = get_indexes(cr, table, column)
+                                    constraints = get_fk_constraints(cr, table, column)
+                                    # Drop foreign key constraints
+                                    for constraint in constraints:
+                                        _logger.info('%s: dropping constraint %s', log_prefix, constraint[2])
+                                        cr.execute('ALTER TABLE "%s" DROP CONSTRAINT IF EXISTS "%s" %s' % (
+                                            constraint[0], constraint[2],
+                                            'CASCADE' if constraint[4] == 'PRIMARY KEY' else ''))
+                                    # Drop indexes
+                                    for index in indexes:
+                                        _logger.info('%s: dropping index %s', log_prefix, index[1])
+                                        cr.execute('DROP INDEX IF EXISTS "%s"' % index[1])
+                                    # Create new column
+                                    tmp_column = 'temp_id_bigint'
+                                    cr.execute('ALTER TABLE "%s" DROP COLUMN IF EXISTS "%s"' % (
+                                        table, tmp_column))
+                                    _logger.info('%s: creating temporary bigint column %s.%s', log_prefix, table, tmp_column)
+                                    cr.execute('ALTER TABLE "%s" ADD COLUMN "%s" int8' % (
+                                        table, tmp_column))
+                                    _logger.info('%s: copying data over to bigint column', log_prefix)
+                                    cr.execute('UPDATE "%s" SET "%s" = "%s"' % (table, tmp_column, column))
+
+                                    if column == 'id':
+                                        # Update sequence to BIGINT and link to new column
+                                        # TODO: fetch sequence by owner, not by name
+                                        # https://stackoverflow.com/questions/6941043/get-table-and-column-owning-a-sequence
+                                        cr.execute('ALTER SEQUENCE IF EXISTS %s_%s_seq '
+                                                   'AS BIGINT OWNED BY "%s"."%s"' % (table, column, table, tmp_column))
+
+                                    _logger.info('%s: restoring column properties: default, not null', log_prefix)
+                                    cr.execute('SELECT column_default, is_nullable FROM information_schema.columns '
+                                               'WHERE table_name = %s AND column_name = %s',
+                                               (table, column))
+                                    column_info = cr.fetchone()
+                                    if column_info[0]:
+                                        cr.execute('ALTER TABLE "%s" ALTER COLUMN "%s" SET DEFAULT %s' % (
+                                            table, tmp_column, column_info[0]))
+                                    if column_info[1] == 'NO':
+                                        cr.execute('ALTER TABLE "%s" ALTER COLUMN "%s" SET NOT NULL' % (
+                                            table, tmp_column))
+
+                                    _logger.info('%s: dropping old column %s.%s', log_prefix, table, column)
+                                    cr.execute('ALTER TABLE "%s" DROP COLUMN "%s"' % (
+                                        table, column))
+                                    _logger.info('%s: renaming temporary column to %s.%s', log_prefix, table, column)
+                                    cr.execute('ALTER TABLE "%s" RENAME COLUMN "%s" TO "%s"' % (
+                                        table, tmp_column, column))
+
+                                    for index in indexes:
+                                        if any(constraint[2] == index[1]
+                                               for constraint in constraints):
+                                            # Index created automatically by constraint
+                                            continue
+                                        _logger.info('%s: recreating index %s', log_prefix, index[1])
+                                        cr.execute(index[2])
+                                    for constraint in constraints:
+                                        if constraint[4] == 'FOREIGN KEY':
+                                            migrate_to_int8(constraint[0], constraint[1])
+                                        cr.execute('ALTER TABLE "%s" ADD CONSTRAINT "%s" %s' % (
+                                            constraint[0], constraint[2], constraint[3]))
+
+                                migrate_to_int8(self._table, k, recursive=True)
+                                ok = True
+
+                            if k == 'id':
+                                continue
+
                             casts = [
                                 ('text', 'char', pg_varchar(f.size), '::%s' % pg_varchar(f.size)),
                                 ('varchar', 'text', 'TEXT', ''),
@@ -2627,6 +2770,9 @@ class BaseModel(object):
 
                     # The field doesn't exist in database. Create it if necessary.
                     else:
+                        if k == 'id':
+                            continue
+
                         if not isinstance(f, fields.function) or f.store:
                             # add the missing field
                             cr.execute('ALTER TABLE "%s" ADD COLUMN "%s" %s' % (self._table, k, get_pg_type(f)[1]))
@@ -2720,7 +2866,8 @@ class BaseModel(object):
 
 
     def _create_table(self, cr):
-        cr.execute('CREATE TABLE "%s" (id SERIAL NOT NULL, PRIMARY KEY(id))' % (self._table,))
+        serial_type = 'BIGSERIAL' if self._bigint_id else 'SERIAL'
+        cr.execute('CREATE TABLE "%s" (id %s NOT NULL, PRIMARY KEY(id))' % (self._table, serial_type))
         cr.execute(("COMMENT ON TABLE \"%s\" IS %%s" % self._table), (self._description,))
         _schema.debug("Table '%s': created", self._table)
 
@@ -2796,7 +2943,15 @@ class BaseModel(object):
                 raise except_orm('Programming Error', 'Many2Many destination model does not exist: `%s`' % (f._obj,))
             dest_model = self.pool[f._obj]
             ref = dest_model._table
-            cr.execute('CREATE TABLE "%s" ("%s" INTEGER NOT NULL, "%s" INTEGER NOT NULL, PRIMARY KEY("%s","%s"))' % (m2m_tbl, col1, col2, col1, col2))
+            source_type = self._select_column_data(cr)['id']['typname']
+            target_data = dest_model._select_column_data(cr).get('id')
+            if target_data:
+                target_type = target_data['typname']
+            else:
+                target_type = 'int8' if dest_model._bigint_id else 'int4'
+
+            cr.execute('CREATE TABLE "%s" ("%s" %s NOT NULL, "%s" %s NOT NULL, PRIMARY KEY("%s","%s"))' % (
+                m2m_tbl, col1, source_type, col2, target_type, col1, col2))
             # create foreign key references with ondelete=cascade, unless the targets are SQL views
             cr.execute("SELECT relkind FROM pg_class WHERE relkind IN ('v') AND relname=%s", (ref,))
             if not cr.fetchall():

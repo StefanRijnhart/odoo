@@ -1038,6 +1038,7 @@ class Integer(Field):
     type = 'integer'
     _slots = {
         'group_operator': None,         # operator for aggregating values
+        'bigint': False,                # set to create an int8 type column
     }
 
     _related_group_operator = property(attrgetter('group_operator'))
@@ -1893,10 +1894,12 @@ class Id(Field):
         'string': 'ID',
         'store': True,
         'readonly': True,
+        'bigint': False,
     }
 
     def to_column(self):
         self.column = fields.integer(self.string)
+        self.column.bigint = self.bigint
         return self.column
 
     def __get__(self, record, owner):
