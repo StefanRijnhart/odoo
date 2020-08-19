@@ -223,6 +223,7 @@ class BaseModel(MetaModel('DummyModel', (object,), {'_register': False})):
     attribute may be set to False.
     """
     _auto = False               # don't create any database backend
+    _bigint_id = False          # set to True to create the id column as bigint
     _register = False           # not visible in ORM registry
     _abstract = True            # whether model is abstract
     _transient = False          # whether model is transient
@@ -330,7 +331,7 @@ class BaseModel(MetaModel('DummyModel', (object,), {'_register': False})):
         from . import fields
 
         # this field 'id' must override any other column or field
-        self._add_field('id', fields.Id(automatic=True))
+        self._add_field('id', fields.Id(automatic=True, bigint=self._bigint_id))
 
         add('display_name', fields.Char(string='Display Name', automatic=True,
             compute='_compute_display_name'))
@@ -2376,7 +2377,7 @@ class BaseModel(MetaModel('DummyModel', (object,), {'_register': False})):
 
         if self._auto:
             if must_create_table:
-                tools.create_model_table(cr, self._table, self._description)
+                tools.create_model_table(cr, self._table, self._description, bigint=self._bigint_id)
 
             if self._parent_store:
                 if not tools.column_exists(cr, self._table, 'parent_path'):

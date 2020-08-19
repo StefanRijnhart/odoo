@@ -201,6 +201,7 @@ class AccountFiscalPositionAccount(models.Model):
 class ResPartner(models.Model):
     _name = 'res.partner'
     _inherit = 'res.partner'
+    _bigint_id = True
 
     @api.multi
     def _credit_debit_get(self):

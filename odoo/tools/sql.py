@@ -46,9 +46,10 @@ def table_kind(cr, tablename):
     cr.execute(query, (tablename,))
     return _TABLE_KIND[cr.fetchone()[0]] if cr.rowcount else None
 
-def create_model_table(cr, tablename, comment=None):
+def create_model_table(cr, tablename, comment=None, bigint=False):
     """ Create the table for a model. """
-    cr.execute('CREATE TABLE "{}" (id SERIAL NOT NULL, PRIMARY KEY(id))'.format(tablename))
+    cr.execute('CREATE TABLE "{}" (id {} NOT NULL, PRIMARY KEY(id))'.format(
+        tablename, 'BIGSERIAL' if bigint else 'SERIAL'))
     if comment:
         cr.execute('COMMENT ON TABLE "{}" IS %s'.format(tablename), (comment,))
     _schema.debug("Table %r: created", tablename)
@@ -64,6 +65,14 @@ def table_columns(cr, tablename):
                FROM information_schema.columns WHERE table_name=%s'''
     cr.execute(query, (tablename,))
     return {row['column_name']: row for row in cr.dictfetchall()}
+
+def column_type(cr, table, column):
+    """ Return the sql column type """
+    cr.execute(
+        """ SELECT udt_name FROM information_schema.columns
+        WHERE table_name = %s AND column_name = %s """, (table, column))
+    row = cr.fetchone()
+    return row[0] if row else None
 
 def column_exists(cr, tablename, columnname):
     """ Return whether the given column exists. """
@@ -86,11 +95,19 @@ def rename_column(cr, tablename, columnname1, columnname2):
 
 def convert_column(cr, tablename, columnname, columntype):
     """ Convert the column to the given type. """
-    try:
-        with cr.savepoint():
-            cr.execute('ALTER TABLE "{}" ALTER COLUMN "{}" TYPE {}'.format(tablename, columnname, columntype),
-                       log_exceptions=False)
-    except psycopg2.NotSupportedError:
+    converted = False
+    if columntype == 'int8' and column_type(cr, tablename, columnname) == 'int4':
+        convert_column_int4_to_int8(cr, tablename, columnname)
+        converted = True
+    if not converted:
+        try:
+            with cr.savepoint():
+                cr.execute('ALTER TABLE "{}" ALTER COLUMN "{}" TYPE {}'.format(
+                    tablename, columnname, columntype), log_exceptions=False)
+                converted = True
+        except psycopg2.NotSupportedError:
+            pass
+    if not converted:
         # can't do inplace change -> use a casted temp column
         query = '''
             ALTER TABLE "{0}" RENAME COLUMN "{1}" TO __temp_type_cast;
@@ -99,6 +116,7 @@ def convert_column(cr, tablename, columnname, columntype):
             ALTER TABLE "{0}" DROP COLUMN  __temp_type_cast CASCADE;
         '''
         cr.execute(query.format(tablename, columnname, columntype))
+        converted = True
     _schema.debug("Table %r: column %r changed to type %s", tablename, columnname, columntype)
 
 def set_not_null(cr, tablename, columnname):
@@ -241,3 +259,108 @@ def reverse_order(order):
         direction = 'asc' if item[1:] == ['desc'] else 'desc'
         items.append('%s %s' % (item[0], direction))
     return ', '.join(items)
+
+def get_indexes(cr, table, column):
+    """ Get the indexes that are based on the given column.
+    Exclude indexes owned by a constraint, as dropping the constraint will
+    also drop the index. """
+    cr.execute(
+        """
+        SELECT tbl.relname AS table_name,
+            pgis.indexname,
+            pgis.indexdef
+        FROM pg_class tbl
+        JOIN pg_index pgi ON pgi.indrelid = tbl.oid
+        JOIN pg_class idx ON pgi.indexrelid = idx.oid
+        JOIN pg_attribute pga ON pga.attrelid = tbl.oid
+        JOIN pg_indexes pgis ON pgis.indexname = idx.relname
+            AND pgis.tablename = tbl.relname
+        WHERE tbl.relkind = 'r'
+            AND pga.attname = %s
+            AND pga.attnum = ANY(pgi.indkey)
+            AND tbl.relname = %s
+            AND NOT EXISTS(
+                SELECT * FROM pg_constraint WHERE conindid = pgi.indexrelid)
+        """, (column, table))
+    return set(cr.fetchall())
+
+def get_fk_constraints(cr, table, column):
+    """ Get the FK constraints that are based on the given column. """
+    cr.execute(
+        """
+        SELECT kcu.table_name, kcu.column_name
+        FROM information_schema.table_constraints AS tc
+        JOIN information_schema.key_column_usage AS kcu
+            ON tc.constraint_schema = kcu.constraint_schema
+                AND tc.constraint_name = kcu.constraint_name
+        JOIN information_schema.constraint_column_usage AS ccu
+            ON ccu.constraint_schema = tc.constraint_schema
+                AND ccu.constraint_name = tc.constraint_name
+        JOIN pg_constraint pgc
+            ON pgc.conname = tc.constraint_name
+                AND tc.table_name = pgc.conrelid::regclass::text
+        WHERE ccu.table_name = %s
+            AND ccu.column_name = %s
+            AND constraint_type = 'FOREIGN KEY'
+        """, (table, column))
+    return cr.fetchall()
+
+def get_views(cr, table, column):
+    """ Get the views that are based on the given column """
+    cr.execute(
+        """
+        SELECT pgc.oid::regclass AS view,
+        pgv.definition
+        FROM pg_attribute AS pga
+        JOIN pg_depend AS pgd
+            ON pgd.refobjsubid = pga.attnum AND pgd.refobjid = pga.attrelid
+        JOIN pg_rewrite AS pgr
+            ON pgr.oid = pgd.objid
+        JOIN pg_class AS pgc
+            ON pgc.oid = pgr.ev_class
+        JOIN pg_views pgv
+            ON pgv.viewname = pgc.oid::regclass::text
+        WHERE pgc.relkind = 'v'
+            AND pgd.classid = 'pg_rewrite'::regclass
+            AND pgd.refclassid = 'pg_class'::regclass
+            AND pgd.deptype = 'n'
+            AND pga.attrelid = %s::regclass
+            AND pga.attname = %s;
+        """, (table, column))
+    return [row for row in cr.fetchall()]
+
+def convert_column_int4_to_int8(cr, table, column):
+    """ Migrate an INTEGER column, and its FK reference columns recursively,
+    to a BIGINT column. Attempts to let Postgres change the column type,
+    with a fallback on creating a new column and copying over the data.
+
+    Postgresql supports changing the column type, but only if there are no
+    dependent views so we drop and recreate those later. """
+    logger = logging.getLogger('openerp.tools.sql.int4_to_int8.%s.%s' % (table, column))
+
+    constraints = get_fk_constraints(cr, table, column)
+    views = get_views(cr, table, column)
+
+    for view in views:
+        logger.info('dropping view "%s"', view[0])
+        cr.execute('DROP VIEW "%s"' % view[0])
+
+    logger.info('Changing column type to int8')
+    cr.execute('ALTER TABLE "{}" ALTER COLUMN "{}" TYPE {}'.format(
+        table, column, 'int8'), log_exceptions=False)
+
+    for constraint in constraints:
+        # Call this code recursively on any column with an FK constaint
+        # on this one (and before we drop the PK constraint)
+        convert_column_int4_to_int8(cr, constraint[0], constraint[1])
+
+    if column == 'id':
+        # Update sequence to BIGINT. Before Postgres 10.0, sequences were BIGINT by default
+        # and the 'AS BIGINT' syntax is not supported
+        if cr._cnx.server_version >= 100000:
+            cr.execute('ALTER SEQUENCE IF EXISTS %s_%s_seq '
+                       'AS BIGINT' % (table, column))
+
+    for view in views:
+        logger.info('recreating view "%s"', view[0])
+        cr.execute('CREATE VIEW "%s" AS %s' % view)

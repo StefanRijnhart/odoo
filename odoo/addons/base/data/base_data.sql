@@ -81,7 +81,7 @@ CREATE TABLE ir_module_module_dependency (
 );
 
 CREATE TABLE ir_model_data (
-    id serial NOT NULL,
+    id bigserial NOT NULL,
     create_uid integer,
     create_date timestamp without time zone,
     write_date timestamp without time zone,
@@ -92,7 +92,7 @@ CREATE TABLE ir_model_data (
     date_update timestamp without time zone,
     module varchar NOT NULL,
     model varchar NOT NULL,
-    res_id integer,
+    res_id int8,
     primary key(id)
 );
 
