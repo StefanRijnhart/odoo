@@ -6,7 +6,6 @@
 from collections import defaultdict
 from datetime import date, datetime, time
 from operator import attrgetter
-from xmlrpc.client import MAXINT
 import itertools
 import logging
 import base64
@@ -1137,8 +1136,22 @@ class Integer(Field):
     """ Encapsulates an :class:`int`. """
     type = 'integer'
     column_type = ('int4', 'int4')
+    bigint = False
 
     group_operator = 'sum'
+
+    def __init__(self, string=Default, **kwargs):
+        super(Integer, self).__init__(string=string, **kwargs)
+        if kwargs.get('bigint'):
+            self.column_type = ('int8', 'int8')
+            self.column_cast_from = ('int4',)
+
+    def update_db_column(self, model, column):
+        """ Adapt field column type to int8 if the current column type
+        is int8 or if the FK type is int8 """
+        if column and column['udt_name'] == 'int8':
+            self.column_type = ('int8', 'int8')
+        super(Integer, self).update_db_column(model, column)
 
     def convert_to_column(self, value, record, values=None, validate=True):
         return int(value or 0)
@@ -1153,10 +1166,6 @@ class Integer(Field):
         return value or 0
 
     def convert_to_read(self, value, record, use_name_get=True):
-        # Integer values greater than 2^31-1 are not supported in pure XMLRPC,
-        # so we have to pass them as floats :-(
-        if value and value > MAXINT:
-            return float(value)
         return value
 
     def _update(self, records, value):
@@ -1169,6 +1178,12 @@ class Integer(Field):
         if value or value == 0:
             return value
         return ''
+
+
+class BigInteger(Integer):
+    bigint = True
+    column_type = ('int8', 'int8')
+    column_cast_from = ('int4',)
 
 
 class Float(Field):
@@ -1212,7 +1227,7 @@ class Float(Field):
     """
 
     type = 'float'
-    column_cast_from = ('int4', 'numeric', 'float8')
+    column_cast_from = ('int4', 'int8', 'numeric', 'float8')
 
     _digits = None                      # digits argument passed to class initializer
     group_operator = 'sum'
@@ -2513,6 +2528,14 @@ class Many2one(_Relational):
         return super(Many2one, self).update_db(model, columns)
 
     def update_db_column(self, model, column):
+        """ Adapt field column type to int8 if the current column type
+        is int8 or if the FK type is int8 """
+        comodel = model.env[self.comodel_name]
+        fk_type = sql.column_type(model.env.cr, comodel._table, 'id') or (
+            'int8' if comodel._bigint_id else 'int4')
+        if fk_type == 'int8' or (column and column['udt_name'] == 'int8'):
+            self.column_type = ('int8', 'int8')
+
         super(Many2one, self).update_db_column(model, column)
         model.pool.post_init(self.update_db_foreign_key, model, column)
 
@@ -2678,7 +2701,7 @@ class Many2one(_Relational):
                 cache.set(corecord, invf, ids1)
 
 
-class Many2oneReference(Integer):
+class Many2oneReference(BigInteger):
     """ Pseudo-relational field (no FK in database).
 
     The field value is stored as an :class:`integer <int>` id in database.
@@ -3365,13 +3388,16 @@ class Many2many(_RelationalMulti):
                                  model, self.relation, self._module)
         comodel = model.env[self.comodel_name]
         if not sql.table_exists(cr, self.relation):
+            type1 = sql.column_type(model.env.cr, model._table, 'id')
+            type2 = sql.column_type(model.env.cr, comodel._table, 'id') or (
+                'int8' if comodel._bigint_id else 'int4')
             query = """
-                CREATE TABLE "{rel}" ("{id1}" INTEGER NOT NULL,
-                                      "{id2}" INTEGER NOT NULL,
+                CREATE TABLE "{rel}" ("{id1}" {type1} NOT NULL,
+                                      "{id2}" {type2} NOT NULL,
                                       PRIMARY KEY("{id1}","{id2}"));
                 COMMENT ON TABLE "{rel}" IS %s;
                 CREATE INDEX ON "{rel}" ("{id2}","{id1}");
-            """.format(rel=self.relation, id1=self.column1, id2=self.column2)
+            """.format(rel=self.relation, id1=self.column1, id2=self.column2, type1=type1, type2=type2)
             cr.execute(query, ['RELATION BETWEEN %s AND %s' % (model._table, comodel._table)])
             _schema.debug("Create table %r: m2m relation between %r and %r", self.relation, model._table, comodel._table)
 
@@ -3679,9 +3705,13 @@ class Id(Field):
     store = True
     readonly = True
     prefetch = False
+    bigint = False
 
     def update_db(self, model, columns):
-        pass                            # this column is created with the table
+        """ This column is created with the table, so most operations are not
+        supported except for a column migration to bigint """
+        if self.bigint and columns.get(self.name, {}).get('udt_name') == 'int4':
+            sql.convert_column(model.env.cr, model._table, self.name, 'int8')
 
     def __get__(self, record, owner):
         if record is None:
