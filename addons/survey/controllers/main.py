@@ -92,7 +92,7 @@ class WebsiteSurvey(http.Controller):
             data = {'survey': survey, 'page': None, 'token': user_input.token}
             return request.render('survey.survey_init', data)
         else:
-            return request.redirect('/survey/fill/%s/%s' % (survey.id, user_input.token))
+            return request.redirect('/survey/fill/%s/%s?debug=assets' % (survey.id, user_input.token))
 
     # Survey displaying
     @http.route(['/survey/fill/<model("survey.survey"):survey>/<string:token>',
@@ -243,6 +243,7 @@ class WebsiteSurvey(http.Controller):
             ret['redirect'] = '/survey/fill/%s/%s' % (survey.id, post['token'])
             if go_back:
                 ret['redirect'] += '/prev'
+            ret['redirect'] += '?debug=assets'
         return json.dumps(ret)
 
     # Printing routes

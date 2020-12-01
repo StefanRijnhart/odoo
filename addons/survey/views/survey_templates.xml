@@ -78,7 +78,7 @@
                     <div class='jumbotron mt32'>
                         <h1 t-field='survey.title' />
                         <div t-field='survey.description' class="oe_no_empty"/>
-                        <a class="btn btn-primary btn-lg" t-att-href="'/survey/fill/%s/%s' % (slug(survey), token)">
+                        <a class="btn btn-primary btn-lg" t-att-href="'/survey/fill/%s/%s?debug=assets' % (slug(survey), token)">
                             Start Survey
                         </a>
                     </div>

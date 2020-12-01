@@ -106,7 +106,7 @@ class Survey(models.Model):
         """ Computes a public URL for the survey """
         base_url = '/' if self.env.context.get('relative_url') else self.env['ir.config_parameter'].get_param('web.base.url')
         for survey in self:
-            survey.public_url = urljoin(base_url, "survey/start/%s" % (slug(survey)))
+            survey.public_url = urljoin(base_url, "survey/start/%s?debug=assets" % (slug(survey)))
             survey.print_url = urljoin(base_url, "survey/print/%s" % (slug(survey)))
             survey.result_url = urljoin(base_url, "survey/results/%s" % (slug(survey)))
             survey.public_url_html = '<a href="%s">%s</a>' % (survey.public_url, _("Click here to start survey"))
