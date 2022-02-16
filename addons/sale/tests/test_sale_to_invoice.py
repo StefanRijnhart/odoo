@@ -141,6 +141,20 @@ class TestSaleToInvoice(TestCommonSaleNoChart):
         for line, inv_line in pycompat.izip(self.sale_order.order_line, invoice.invoice_line_ids):
             self.assertEquals(line.discount, inv_line.discount, 'Discount on lines of order and invoice should be same')
 
+    def test_qty_invoiced(self):
+        """Verify uom rounding is correctly considered during qty_invoiced compute
+
+        Backport of https://github.com/odoo/odoo/pull/84751
+        """
+        (self.sol_prod_order + self.sol_serv_deliver + self.sol_prod_deliver).unlink()
+        self.sol_serv_order.product_uom.rounding *= 10
+        self.sol_serv_order.product_uom_qty = 5.47
+        self.sale_order.action_confirm()
+        invoice_wizard = self.env['sale.advance.payment.inv'].with_context(self.context).create({'advance_payment_method': 'all'})
+        invoice_wizard.create_invoices()
+        self.assertTrue(self.sol_serv_order.invoice_lines)
+        self.assertEqual(self.sol_serv_order.invoice_status, 'invoiced')
+
     def test_invoice_refund(self):
         """ Test invoice with a refund and check customer invoices credit note is created from respective invoice """
         # lines are in draft

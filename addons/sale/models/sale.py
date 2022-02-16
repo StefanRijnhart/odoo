@@ -4,6 +4,7 @@
 from datetime import datetime, timedelta
 from functools import partial
 from itertools import groupby
+import math
 
 from odoo import api, fields, models, _
 from odoo.exceptions import UserError, ValidationError
@@ -568,7 +569,7 @@ class SaleOrder(models.Model):
         :returns: list of created invoices
         """
         inv_obj = self.env['account.invoice']
-        precision = self.env['decimal.precision'].precision_get('Product Unit of Measure')
+        global_precision = self.env['decimal.precision'].precision_get('Product Unit of Measure')
         invoices = {}
         references = {}
         invoices_origin = {}
@@ -587,6 +588,7 @@ class SaleOrder(models.Model):
             line_vals_list = []
             # sequence is the natural order of order_lines
             for line in order.order_line:
+                precision = min(math.ceil(abs(math.log10(line.product_uom.rounding or 1))), global_precision)
                 if line.display_type == 'line_section':
                     pending_section = line
                     continue
@@ -978,8 +980,9 @@ class SaleOrderLine(models.Model):
           is removed from the list.
         - invoiced: the quantity invoiced is larger or equal to the quantity ordered.
         """
-        precision = self.env['decimal.precision'].precision_get('Product Unit of Measure')
+        global_precision = self.env['decimal.precision'].precision_get('Product Unit of Measure')
         for line in self:
+            precision = min(math.ceil(abs(math.log10(line.product_uom.rounding or 1))), global_precision)
             if line.state not in ('sale', 'done'):
                 line.invoice_status = 'no'
             elif not float_is_zero(line.qty_to_invoice, precision_digits=precision):
