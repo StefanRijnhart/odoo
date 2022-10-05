@@ -10,6 +10,7 @@ from odoo.addons.payment import setup_provider, reset_payment_provider
 
 
 def pre_init_hook(cr):
+    return
     if not any(config.get(key) for key in ('init', 'update')):
         raise UserError(
             "This module is deprecated and cannot be installed. "

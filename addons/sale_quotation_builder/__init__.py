@@ -16,17 +16,17 @@ def _pre_init_sale_quotation_builder(cr):
     """
     cr.execute("""
         ALTER TABLE "sale_order"
-        ADD COLUMN "website_description" text
+        ADD COLUMN if not exists "website_description" text
     """)
     cr.execute("""
         ALTER TABLE "sale_order_line"
-        ADD COLUMN "website_description" text
+        ADD COLUMN if not exists "website_description" text
     """)
     cr.execute("""
         ALTER TABLE "sale_order_template_line"
-        ADD COLUMN "website_description" text
+        ADD COLUMN if not exists "website_description" text
     """)
     cr.execute("""
         ALTER TABLE "sale_order_template_option"
-        ADD COLUMN "website_description" text
+        ADD COLUMN if not exists "website_description" text
     """)
