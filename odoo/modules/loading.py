@@ -417,6 +417,10 @@ def load_modules(registry, force_demo=False, status=None, update_module=False):
             _logger.critical('module base cannot be loaded! (hint: verify addons-path)')
             raise ImportError('Module `base` cannot be loaded! (hint: verify addons-path)')
 
+        if odoo.tools.table_exists(cr, 'ir_model_fields'):
+            cr.execute("SELECT model || '.' || name FROM ir_model_fields WHERE translate is True")
+            registry._translated_fields = set(row[0] for row in cr.fetchall())
+
         # processed_modules: for cleanup step after install
         # loaded_modules: to avoid double loading
         report = registry._assertion_report
