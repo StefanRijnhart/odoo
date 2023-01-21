@@ -1622,7 +1622,7 @@ class _String(Field):
     def __init__(self, string=Default, **kwargs):
         # translate is either True, False, or a callable
         if 'translate' in kwargs and not callable(kwargs['translate']):
-            kwargs['translate'] = bool(kwargs['translate'])
+            kwargs['translate'] = kwargs['translate'] if kwargs['translate'] == 'from database' else bool(kwargs['translate'])
         super(_String, self).__init__(string=string, **kwargs)
 
     _related_translate = property(attrgetter('translate'))

@@ -512,9 +512,43 @@ def load_modules(registry, force_demo=False, status=None, update_module=False):
         # STEP 3.6: apply remaining constraints in case of an upgrade
         registry.finalize_constraints()
 
+        env = api.Environment(cr, SUPERUSER_ID, {})
+        # Sanitize "from database" values in fields' translate attribute
+        for field_ref in registry._translated_fields.copy():
+            parts = field_ref.split(".")
+            model = ".".join(parts[:-1])
+            field_name = parts[-1]
+            if (model in env
+                and field_name in env[model]._fields
+                and env[model]._fields[field_name].translate == "from database"
+            ):
+                field = env[model]._fields[field_name]
+                if field.related_field:
+                    field.translate = field.related_field.translate
+                    continue
+                if processed_modules:  # upgrading, so we can change the column type
+                    field.translate = False
+                    if field.store and processed_modules:
+                        _logger.warning("Column %s is not translated anymore", field_ref)
+                        registry._translated_fields.remove(field_ref)
+                        # TODO: this draws errors like
+                        # AttributeError: 'Registry' object has no attribute '_post_init_queue'
+                        #
+                        # columns = tools.table_columns(cr, env[model]._table)
+                        # field.update_db(env[model], columns)
+                        cr.execute(
+                            "update ir_model_fields set translate = false "
+                            "where model = %s and name = %s",
+                            (model, field_name)
+                        )
+                else:  # Just sanitize the translate attribute
+                    if isinstance(field, odoo.fields.Html):
+                        field.translate = tools.translate.html_translate
+                    else:
+                        field.translate = True
+
         # STEP 4: Finish and cleanup installations
         if processed_modules:
-            env = api.Environment(cr, SUPERUSER_ID, {})
 
             cr.execute("SELECT model from ir_model")
             for (model,) in cr.fetchall():
@@ -525,7 +559,7 @@ def load_modules(registry, force_demo=False, status=None, update_module=False):
 
             # Cleanup orphan records
             env['ir.model.data']._process_end(processed_modules)
-            env.flush_all()
+        env.flush_all()
 
         for kind in ('init', 'demo', 'update'):
             tools.config[kind] = {}

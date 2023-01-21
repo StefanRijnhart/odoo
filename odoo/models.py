@@ -2765,7 +2765,7 @@ class BaseModel(metaclass=MetaModel):
         for name, fields_ in definitions.items():
             field = fields_[-1]
             if not field.translate and str(field) in cls.pool._translated_fields:
-                fields_.append(field.new(translate=True))
+                fields_.append(field.new(translate="from database"))
             if len(fields_) == 1 and fields_[0]._direct and fields_[0].model_name == cls._name:
                 cls._fields[name] = fields_[0]
             else:
